@@ -137,18 +137,36 @@
 
 .generate-button, .close-button {
     color: #333;
-    background-color: rgb(246, 245, 244);
+    background-color: rgb(108, 245, 74);
     font-size: medium;
     padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 48%; /* Make buttons take up almost half the width each */
+}
+
+.generate-button:hover, .close-button:hover {
+    background-color: #87e43b;
+}
+
+.close-button {
+    background-color: #ccc;
+}
+
+.compose-prompt-button {
+    color: #333;
+    background-color: rgb(246, 245, 244);
+    font-size: small;
+    padding: 5px 10px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     margin-bottom: 10px;
 }
 
-.close-button {
-    background-color: #ccc;
-    width: 100%;
+.compose-prompt-button:hover {
+    background-color: #e6e6e6;
 }
 
 .add-category-container {
@@ -238,6 +256,8 @@
 }
 
 .bottom-buttons-container {
+    display: flex;
+    justify-content: space-between;
     margin-top: 20px;
 }
 

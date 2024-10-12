@@ -52,7 +52,10 @@
     function openPromptComposer() {
         console.log("openPromptComposer called");
         try {
-            $('#promptComposerModal').remove();
+            if ($('#promptComposerModal').length) {
+                $('#promptComposerModal').remove();
+                return;
+            }
 
             modalDiv = $('<div id="promptComposerModal"></div>').addClass('prompt-composer-modal');
             const title = $('<h3>Prompt Composer</h3>').addClass('prompt-composer-title');
@@ -303,16 +306,7 @@
 
     function placeComposerButton() {
         let composeButton = $('<button>Compose Prompt</button>')
-            .css({
-                'color': '#333',
-                'background-color': 'rgb(246, 245, 244)',
-                'font-size': 'small',
-                'padding': '5px 10px',
-                'border': 'none',
-                'border-radius': '5px',
-                'cursor': 'pointer',
-                'margin-bottom': '10px'
-            })
+            .addClass('compose-prompt-button')
             .click(openPromptComposer);
 
         let textAreas = document.querySelectorAll("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']");
