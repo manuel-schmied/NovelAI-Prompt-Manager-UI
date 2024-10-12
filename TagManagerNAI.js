@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tag manager NAI
 // @namespace    http://tampermonkey.net/
-// @version      0.9
-// @description  tag save loader for NovelAI Image gen with improved UI, accordion preview, pagination, and page indicator
+// @version      1.2
+// @description  tag save loader for NovelAI Image gen with improved UI, accordion preview, pagination, page indicator, and sorting options (date and alphabetical)
 // @author       sllypper, me
 // @license      MIT
 // @match        http*://novelai.net/image
@@ -25,7 +25,10 @@ function saveTags() {
     tagArea = document.querySelector("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']");
     const label = prompt("Enter a label to save these tags:");
     if (label) {
-        savedPrompts[label] = tagArea.value;
+        savedPrompts[label] = {
+            content: tagArea.value,
+            createdDate: new Date().toISOString()
+        };
         localStorage.setItem('savedPrompts', JSON.stringify(savedPrompts));
     } else {
         alert("Label is required to save tags.");
@@ -52,7 +55,15 @@ function restoreTags() {
             'z-index': '9999999999',
             'width': '400px',
             'max-height': '70%',
-            'overflow-y': 'auto'
+            'display': 'flex',
+            'flex-direction': 'column'
+        });
+
+    const contentDiv = $('<div></div>')
+        .css({
+            'overflow-y': 'auto',
+            'flex-grow': '1',
+            'margin-bottom': '20px'
         });
 
     const title = $('<h3>Manage Saved Tags</h3>').css({'text-align': 'center', 'margin-bottom': '20px', 'color': '#333'});
@@ -68,11 +79,37 @@ function restoreTags() {
             renderPage(currentPage);
         });
 
-    modalDiv.append(title).append(itemsPerPageSelect);
+    const sortSelect = $('<select></select>')
+        .css({ 'margin-bottom': '20px', 'color': '#333', 'background-color': '#f0f0f0', 'padding': '5px', 'border-radius': '5px' })
+        .append('<option value="date-newest">Date Created (Newest First)</option>')
+        .append('<option value="date-oldest">Date Created (Oldest First)</option>')
+        .append('<option value="alphabetical-asc">Alphabetical (A-Z)</option>')
+        .append('<option value="alphabetical-desc">Alphabetical (Z-A)</option>')
+        .change(function() {
+            sortLabels($(this).val());
+            renderPage(currentPage);
+        });
+
+    contentDiv.append(title).append(itemsPerPageSelect).append(sortSelect);
+
+    function sortLabels(criteria) {
+        labels.sort((a, b) => {
+            if (criteria === 'date-newest') {
+                return new Date(savedPrompts[b].createdDate) - new Date(savedPrompts[a].createdDate);
+            } else if (criteria === 'date-oldest') {
+                return new Date(savedPrompts[a].createdDate) - new Date(savedPrompts[b].createdDate);
+            } else if (criteria === 'alphabetical-asc') {
+                return a.localeCompare(b);
+            } else if (criteria === 'alphabetical-desc') {
+                return b.localeCompare(a);
+            }
+            return 0;
+        });
+    }
 
     function renderPage(page) {
-        modalDiv.find('.tag-container').remove();
-        modalDiv.find('.pagination').remove();
+        contentDiv.find('.tag-container').remove();
+        contentDiv.find('.pagination').remove();
 
         const start = (page - 1) * ITEMS_PER_PAGE;
         const end = start + ITEMS_PER_PAGE;
@@ -108,7 +145,7 @@ function restoreTags() {
                 'background-color': '#f0f0f0',
                 'border-radius': '5px',
                 'color': '#333'
-            }).text(savedPrompts[label]);
+            }).text(savedPrompts[label].content);
 
             const buttonGroup = $('<div></div>').css({'display': 'flex', 'gap': '5px', 'margin-top': '10px'});
             
@@ -116,16 +153,16 @@ function restoreTags() {
                 .css(btnLoadCss())
                 .click(() => {
                     tagArea = document.querySelector("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']");
-                    tagArea.value = savedPrompts[label];
+                    tagArea.value = savedPrompts[label].content;
                     modalDiv.remove();
                 });
             
             const editButton = $('<button>Edit</button>')
                 .css(btnLoadCss())
                 .click(() => {
-                    const newTags = prompt("Edit tags for label: " + label, savedPrompts[label]);
+                    const newTags = prompt("Edit tags for label: " + label, savedPrompts[label].content);
                     if (newTags !== null) {
-                        savedPrompts[label] = newTags;
+                        savedPrompts[label].content = newTags;
                         localStorage.setItem('savedPrompts', JSON.stringify(savedPrompts));
                         labelName.text(label);
                         previewDiv.text(newTags);
@@ -144,7 +181,7 @@ function restoreTags() {
 
             buttonGroup.append(loadButton).append(editButton).append(deleteButton);
             labelContainer.append(labelHeader).append(previewDiv).append(buttonGroup);
-            modalDiv.append(labelContainer);
+            contentDiv.append(labelContainer);
         });
 
         const paginationDiv = $('<div class="pagination"></div>').css({
@@ -177,18 +214,18 @@ function restoreTags() {
         const pageIndicator = $('<span></span>').text(`Page ${currentPage} of ${Math.ceil(labels.length / ITEMS_PER_PAGE)}`).css({'font-size': 'small', 'color': '#333'});
 
         paginationDiv.append(prevButton).append(pageIndicator).append(nextButton);
-        modalDiv.append(paginationDiv);
+        contentDiv.append(paginationDiv);
     }
 
     renderPage(currentPage);
 
     const cancelButton = $('<button>Close</button>')
-        .css($.extend({}, btnLoadCss(), {'margin-top': '20px', 'width': '100%'}))
+        .css($.extend({}, btnLoadCss(), {'margin-top': '20px', 'width': '100%', 'background-color': '#ccc'}))
         .click(() => {
             modalDiv.remove();
         });
 
-    modalDiv.append(cancelButton);
+    modalDiv.append(contentDiv).append(cancelButton);
     $('body').append(modalDiv);
 }
 
