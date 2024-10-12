@@ -37,6 +37,14 @@
     margin-right: 10px;
 }
 
+.toggle-button:hover {
+    background-color: #555;
+}
+
+.toggle-button:active {
+    background-color: #444;
+}
+
 .category-container {
     margin-bottom: 15px;
 }
@@ -141,4 +149,52 @@
 .close-button {
     background-color: #ccc;
     width: 100%;
+}
+
+.add-category-container {
+    display: flex;
+    margin-bottom: 15px;
+}
+
+.add-category-input {
+    flex-grow: 1;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    margin-right: 10px;
+}
+
+.add-category-button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background-color: #333;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.delete-category-button {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.category-management {
+    margin-bottom: 15px;
+    border-top: 1px solid #ccc;
+    padding-top: 15px;
 }

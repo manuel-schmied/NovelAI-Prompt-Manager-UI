@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Prompt Composer NAI
 // @namespace    http://tampermonkey.net/
-// @version      2.3
-// @description  Helps compose a complete prompt for NovelAI Image generation, with segmented categories such as artists, participants, backgrounds, emotions. Allows adding and removing tags with persistent selections saved in local storage, using an array of objects for each tag entry to track state. The add tag input and delete buttons are usually hidden and shown on demand to reduce clutter.
+// @version      2.4
+// @description  Helps compose a complete prompt for NovelAI Image generation, with customizable categories. Allows adding and removing tags and categories with persistent selections saved in local storage.
 // @author       Manu
 // @license      MIT
 // @match        http*://novelai.net/image
@@ -38,28 +38,17 @@
     function openPromptComposer() {
         console.log("openPromptComposer called");
         try {
-            // Remove existing modal if present to ensure only one instance is active
             $('#promptComposerModal').remove();
 
-            // Create modal container
             const modalDiv = $('<div id="promptComposerModal"></div>').addClass('prompt-composer-modal');
-
             const title = $('<h3>Prompt Composer</h3>').addClass('prompt-composer-title');
             modalDiv.append(title);
 
-            // Create a container for the buttons
             const buttonContainer = $('<div></div>').addClass('button-container');
-
-            // Add a single "Edit Tags" button
             const editButton = $('<button>Edit Tags</button>').addClass('toggle-button').click(() => {
-                $('.add-tag-container').toggle();
-                $('.delete-button').toggle();
-                // Set display to flex when visible
+                $('.add-tag-container, .delete-button').toggle();
                 $('.add-tag-container:visible').css('display', 'flex');
             });
-            buttonContainer.append(editButton);
-
-            // Add a "Toggle Weights" button next to the "Edit Tags" button
             const weightToggleButton = $('<button>Toggle Weights</button>').addClass('toggle-button').click(() => {
                 const weightsVisible = !$('.weight-control').first().is(':visible');
                 $('.weight-control').toggle(weightsVisible);
@@ -72,88 +61,40 @@
                     updateWeightDisplay(tag, $(this), weightControl);
                 });
             });
-            buttonContainer.append(weightToggleButton);
-
-            // Append the button container to the modal
+            const categoryManagementButton = $('<button>Manage Categories</button>').addClass('toggle-button').click(() => {
+                $('.category-management').toggle();
+            });
+            buttonContainer.append(editButton, weightToggleButton, categoryManagementButton);
             modalDiv.append(buttonContainer);
 
-            // Use stored categories as fallback
-            let categories = JSON.parse(localStorage.getItem('promptComposerSelectedOptions')) || {
-                "Artists": [{ name: "Van Gogh", active: false }, { name: "Da Vinci", active: false }, { name: "Picasso", active: false }, { name: "Hokusai", active: false }],
-                "Participants": [{ name: "Knight", active: false }, { name: "Dragon", active: false }, { name: "Princess", active: false }, { name: "Samurai", active: false }],
-                "Backgrounds": [{ name: "Forest", active: false }, { name: "Castle", active: false }, { name: "Space", active: false }, { name: "Underwater", active: false }],
-                "Emotions": [{ name: "Mystical", active: false }, { name: "Epic", active: false }, { name: "Serene", active: false }, { name: "Chaotic", active: false }]
-            };
-
-            // Create checkboxes, text area, and add/remove functionality for each category
-            for (let category in selectedOptions) {
-                const categoryContainer = $('<div></div>').addClass('category-container');
-                const label = $('<label></label>').text(category + ':').addClass('category-label');
-                categoryContainer.append(label);
-
-                // Create checkboxes for tags
-                const checkboxContainer = $('<div></div>').addClass('checkbox-container');
-                selectedOptions[category] = selectedOptions[category].filter(tag => tag.active || categories[category].some(cat => cat.name === tag.name));
-                selectedOptions[category].forEach(tag => {
-                    createCheckbox(tag.name, category, checkboxContainer);
-                });
-                categoryContainer.append(checkboxContainer);
-
-                // Add selected tags that are not in predefined categories
-                categories[category].forEach(tag => {
-                    if (!selectedOptions[category].some(selectedTag => selectedTag.name === tag.name)) {
-                        selectedOptions[category].push(tag);
-                        createCheckbox(tag.name, category, checkboxContainer);
-                    }
-                });
-
-                // Create add tag input and button (initially hidden)
-                const addTagContainer = $('<div></div>').addClass('add-tag-container');
-                const addTagInput = $('<input type="text">').addClass('add-tag-input')
-                    .attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
-                const addTagButton = $('<button>Add</button>').addClass('add-tag-button');
-                
-                const addNewTag = () => {
-                    const newTag = addTagInput.val().trim();
-                    if (newTag && !selectedOptions[category].some(tag => tag.name === newTag)) {
-                        selectedOptions[category].push({ name: newTag, active: true });
-                        createCheckbox(newTag, category, checkboxContainer);
-                        addTagInput.val('');
+            // Add category management (initially hidden)
+            const categoryManagement = $('<div></div>').addClass('category-management').hide();
+            const addCategoryContainer = $('<div></div>').addClass('add-category-container');
+            const addCategoryInput = $('<input type="text">').addClass('add-category-input')
+                .attr('placeholder', 'Add new category...');
+            const addCategoryButton = $('<button>Add Category</button>').addClass('add-category-button')
+                .click(() => {
+                    const newCategory = addCategoryInput.val().trim();
+                    if (newCategory && !selectedOptions.hasOwnProperty(newCategory)) {
+                        selectedOptions[newCategory] = [];
                         saveSelectionsToLocalStorage();
-                    }
-                };
-
-                addTagButton.click(addNewTag);
-                
-                addTagInput.keypress(function(e) {
-                    if(e.which == 13) { // Enter key
-                        e.preventDefault();
-                        addNewTag();
+                        addCategoryInput.val('');
+                        renderCategories();
                     }
                 });
+            addCategoryContainer.append(addCategoryInput, addCategoryButton);
+            categoryManagement.append(addCategoryContainer);
+            modalDiv.append(categoryManagement);
 
-                addTagContainer.append(addTagInput).append(addTagButton);
-                categoryContainer.append(addTagContainer);
-
-                // Modify the text area functionality
-                const textArea = $('<textarea></textarea>').addClass('tag-textarea')
-                    .attr('placeholder', 'Enter additional ' + category.toLowerCase() + ' here...');
-                
-                // Initialize textarea with custom tags not in checkboxes
-                const checkboxTags = selectedOptions[category].map(tag => tag.name);
-                const customTags = localStorage.getItem('customTags_' + category) || '';
-                textArea.val(customTags);
-
-                textArea.on('input', function() {
-                    const customTagsValue = $(this).val().trim();
-                    localStorage.setItem('customTags_' + category, customTagsValue);
-                });
-
-                categoryContainer.append(textArea);
-                modalDiv.append(categoryContainer);
+            function renderCategories() {
+                $('.category-container').remove();
+                for (let category in selectedOptions) {
+                    createCategorySection(category, modalDiv);
+                }
             }
 
-            // Button to generate prompt
+            renderCategories();
+
             const generateButton = $('<button>Generate Prompt</button>').addClass('generate-button')
                 .click(() => {
                     const combinedPrompt = generatePrompt();
@@ -163,19 +104,78 @@
                     modalDiv.remove();
                 });
 
-            // Button to close modal
             const cancelButton = $('<button>Close</button>').addClass('close-button')
                 .click(() => {
                     saveSelectionsToLocalStorage();
                     modalDiv.remove();
                 });
 
-            modalDiv.append(generateButton).append(cancelButton);
+            modalDiv.append(generateButton, cancelButton);
             $('body').append(modalDiv);
             console.log("Modal appended to body");
         } catch (error) {
             console.error("Error in openPromptComposer:", error);
         }
+    }
+
+    function createCategorySection(category, modalDiv) {
+        const categoryContainer = $('<div></div>').addClass('category-container');
+        const categoryHeader = $('<div></div>').addClass('category-header');
+        const label = $('<label></label>').text(category + ':').addClass('category-label');
+        const deleteCategoryButton = $('<button>×</button>').addClass('delete-category-button')
+            .click(() => {
+                delete selectedOptions[category];
+                saveSelectionsToLocalStorage();
+                categoryContainer.remove();
+            });
+        categoryHeader.append(label, deleteCategoryButton);
+        categoryContainer.append(categoryHeader);
+
+        const checkboxContainer = $('<div></div>').addClass('checkbox-container');
+        selectedOptions[category].forEach(tag => {
+            createCheckbox(tag.name, category, checkboxContainer);
+        });
+        categoryContainer.append(checkboxContainer);
+
+        const addTagContainer = $('<div></div>').addClass('add-tag-container');
+        const addTagInput = $('<input type="text">').addClass('add-tag-input')
+            .attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
+        const addTagButton = $('<button>Add</button>').addClass('add-tag-button');
+        
+        const addNewTag = () => {
+            const newTag = addTagInput.val().trim();
+            if (newTag && !selectedOptions[category].some(tag => tag.name === newTag)) {
+                selectedOptions[category].push({ name: newTag, active: true });
+                createCheckbox(newTag, category, checkboxContainer);
+                addTagInput.val('');
+                saveSelectionsToLocalStorage();
+            }
+        };
+
+        addTagButton.click(addNewTag);
+        addTagInput.keypress(function(e) {
+            if(e.which == 13) {
+                e.preventDefault();
+                addNewTag();
+            }
+        });
+
+        addTagContainer.append(addTagInput, addTagButton);
+        categoryContainer.append(addTagContainer);
+
+        const textArea = $('<textarea></textarea>').addClass('tag-textarea')
+            .attr('placeholder', 'Enter additional ' + category.toLowerCase() + ' here...');
+        
+        const customTags = localStorage.getItem('customTags_' + category) || '';
+        textArea.val(customTags);
+
+        textArea.on('input', function() {
+            const customTagsValue = $(this).val().trim();
+            localStorage.setItem('customTags_' + category, customTagsValue);
+        });
+
+        categoryContainer.append(textArea);
+        modalDiv.append(categoryContainer);
     }
 
     function createCheckbox(item, category, container) {
@@ -241,7 +241,7 @@
     }
 
     function onReady() {
-        setTimeout(placeComposerButton, 3000); // Add a delay of 3 seconds to ensure elements are loaded
+        setTimeout(placeComposerButton, 3000);
     }
 
     function placeComposerButton() {
@@ -258,7 +258,6 @@
             })
             .click(openPromptComposer);
 
-        // Insert the button above the first textarea in the sidebar
         let textAreas = document.querySelectorAll("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']");
         if (textAreas.length > 0) {
             let sidebar = textAreas[0].closest('div').parentElement;
@@ -295,14 +294,20 @@
         const weight = tag.weight || 1;
         if (weight === 1) {
             displayElement.text('');
-            if (controlElement) controlElement.hide();
+            if (controlElement) {
+                controlElement.find('input').hide();
+                controlElement.find('button').show();
+            }
         } else {
             if (controlElement && $('.weight-control').first().is(':visible')) {
                 displayElement.text('');
-                controlElement.show();
+                controlElement.find('input, button').show();
             } else {
                 displayElement.text(`:${weight.toFixed(2)}`);
-                if (controlElement) controlElement.hide();
+                if (controlElement) {
+                    controlElement.find('input').hide();
+                    controlElement.find('button').show();
+                }
             }
         }
     }
