@@ -181,22 +181,24 @@
     margin-bottom: 10px;
 }
 
+.category-management-buttons {
+    display: flex;
+    align-items: center;
+}
+
 .delete-category-button {
     background-color: #ff4d4d;
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    font-size: 16px;
-    line-height: 1;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
     cursor: pointer;
+    margin-left: 10px;
 }
 
-.category-management {
-    margin-bottom: 15px;
-    border-top: 1px solid #ccc;
-    padding-top: 15px;
+.delete-category-button:hover {
+    background-color: #ff3333;
 }
 
 .move-category-button {
@@ -204,22 +206,22 @@
     color: white;
     border: none;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     font-size: 16px;
     line-height: 1;
     cursor: pointer;
     margin-right: 5px;
-    display: none;
 }
 
-.delete-button, .move-category-button {
-    display: none;
+.move-category-button:hover {
+    background-color: #45a049;
 }
 
-.categories-container {
-    flex-grow: 1;
-    overflow-y: auto;
+.category-management {
+    margin-bottom: 15px;
+    border-top: 1px solid #ccc;
+    padding-top: 15px;
 }
 
 .bottom-buttons-container {

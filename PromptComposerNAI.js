@@ -76,7 +76,8 @@
                 });
             });
             const categoryManagementButton = $('<button>Manage Categories</button>').addClass('toggle-button').click(() => {
-                $('.category-management, .move-category-button, .delete-category-button').toggle();
+                $('.category-management').toggle();
+                $('.move-category-button, .delete-category-button').toggle();
             });
             buttonContainer.append(editButton, weightToggleButton, categoryManagementButton);
             modalDiv.append(buttonContainer);
@@ -139,14 +140,19 @@
         const categoryHeader = $('<div></div>').addClass('category-header');
         const label = $('<label></label>').text(category.name + ':').addClass('category-label');
         
-        const deleteCategoryButton = $('<button>×</button>').addClass('delete-category-button')
+        const deleteCategoryButton = $('<button>Delete Category</button>')
+            .addClass('delete-category-button')
+            .hide() // Initially hide the delete button
             .click(() => {
-                promptComposerData.categories.splice(index, 1);
-                saveToLocalStorage();
-                renderCategories();
+                if (confirm(`Are you sure you want to delete the category "${category.name}" and all its tags?`)) {
+                    promptComposerData.categories.splice(index, 1);
+                    saveToLocalStorage();
+                    renderCategories();
+                }
             });
         
         const moveCategoryUpButton = $('<button>↑</button>').addClass('move-category-button')
+            .hide() // Initially hide the move up button
             .click(() => {
                 if (index > 0) {
                     [promptComposerData.categories[index - 1], promptComposerData.categories[index]] = 
@@ -157,6 +163,7 @@
             });
         
         const moveCategoryDownButton = $('<button>↓</button>').addClass('move-category-button')
+            .hide() // Initially hide the move down button
             .click(() => {
                 if (index < promptComposerData.categories.length - 1) {
                     [promptComposerData.categories[index], promptComposerData.categories[index + 1]] = 
@@ -166,7 +173,10 @@
                 }
             });
         
-        categoryHeader.append(label, moveCategoryUpButton, moveCategoryDownButton, deleteCategoryButton);
+        const categoryManagementButtons = $('<div></div>').addClass('category-management-buttons');
+        categoryManagementButtons.append(moveCategoryUpButton, moveCategoryDownButton, deleteCategoryButton);
+        
+        categoryHeader.append(label, categoryManagementButtons);
         categoryContainer.append(categoryHeader);
 
         const checkboxContainer = $('<div></div>').addClass('checkbox-container');
