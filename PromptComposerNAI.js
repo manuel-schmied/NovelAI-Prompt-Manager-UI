@@ -87,10 +87,15 @@
             'background-color': '#666',
             'color': '#fff'
         }).click(() => {
-            $('.weight-control').toggle();
-            $('.weight-control').each(function() {
-                const weightInput = $(this).find('input[type="number"]');
-                updateWeightDisplay(weightInput);
+            const weightsVisible = !$('.weight-control').first().is(':visible');
+            $('.weight-control').toggle(weightsVisible);
+            $('.weight-display').each(function() {
+                const label = $(this).closest('label');
+                const weightControl = label.find('.weight-control');
+                const tag = {
+                    weight: parseFloat(weightControl.find('input[type="number"]').val())
+                };
+                updateWeightDisplay(tag, $(this), weightControl);
             });
         });
         buttonContainer.append(weightToggleButton);
@@ -252,6 +257,12 @@
             saveSelectionsToLocalStorage();
         });
 
+        // Create weight display
+        const weightDisplay = $('<span class="weight-display"></span>').css({
+            'font-size': '0.8em',
+            'color': '#666',
+        });
+
         // Create weight control
         const weightControl = $('<div class="weight-control"></div>').css({
             'display': 'none',
@@ -271,7 +282,7 @@
         increaseButton.click(() => updateWeight(0.05));
         weightInput.on('input', () => {
             tag.weight = parseFloat(weightInput.val());
-            updateWeightDisplay(weightInput);
+            updateWeightDisplay(tag, weightDisplay, weightControl);
             saveSelectionsToLocalStorage();
         });
 
@@ -281,14 +292,12 @@
             newWeight = Math.max(0.5, Math.min(1.5, newWeight)); // Clamp between 0.5 and 1.5
             tag.weight = newWeight;
             weightInput.val(newWeight);
-            updateWeightDisplay(weightInput);
+            updateWeightDisplay(tag, weightDisplay, weightControl);
             saveSelectionsToLocalStorage();
         }
 
-        updateWeightDisplay(weightInput);
-
         weightControl.append(decreaseButton, weightInput, increaseButton);
-        checkboxLabel.append(checkbox, item, weightControl);
+        checkboxLabel.append(checkbox, item, weightDisplay, weightControl);
 
         const deleteButton = $('<button class="delete-button">×</button>').css({
             'margin-left': '5px',
@@ -307,6 +316,8 @@
 
         checkboxLabel.append(deleteButton);
         container.append(checkboxLabel);
+
+        updateWeightDisplay(tag, weightDisplay, weightControl);
     }
 
     function onReady() {
@@ -359,13 +370,20 @@
         }).flat().join(", ");
     }
 
-    // Add this function outside of createCheckbox
-    function updateWeightDisplay(weightInput) {
-        const weight = parseFloat(weightInput.val());
+    // Update this function to handle both the input, display, and control visibility
+    function updateWeightDisplay(tag, displayElement, controlElement) {
+        const weight = tag.weight || 1;
         if (weight === 1) {
-            weightInput.hide();
+            displayElement.text('');
+            controlElement.hide();
         } else {
-            weightInput.show().val(weight);
+            if ($('.weight-control').first().is(':visible')) {
+                displayElement.text('');
+                controlElement.show();
+            } else {
+                displayElement.text(`:${weight.toFixed(2)}`);
+                controlElement.hide();
+            }
         }
     }
 
