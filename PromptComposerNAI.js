@@ -72,6 +72,21 @@
         });
         modalDiv.append(editButton);
 
+        // Add a "Toggle Weights" button next to the "Edit Tags" button
+        const weightToggleButton = $('<button>Toggle Weights</button>').css({
+            'margin-bottom': '20px',
+            'margin-left': '10px',
+            'padding': '5px 10px',
+            'border-radius': '5px',
+            'border': 'none',
+            'cursor': 'pointer',
+            'background-color': '#666',
+            'color': '#fff',
+        }).click(() => {
+            $('.weight-control').toggle();
+        });
+        editButton.after(weightToggleButton);
+
         // Use stored categories as fallback
         let categories = JSON.parse(localStorage.getItem('promptComposerSelectedOptions')) || {
             "Artists": [{ name: "Van Gogh", active: false }, { name: "Da Vinci", active: false }, { name: "Picasso", active: false }, { name: "Hokusai", active: false }],
@@ -182,16 +197,7 @@
                 'margin-bottom': '10px'
             })
             .click(() => {
-                const combinedPrompt = Object.keys(selectedOptions).map(category => {
-                    const activeTags = selectedOptions[category]
-                        .filter(tag => tag.active)
-                        .map(tag => tag.name);
-                    const customTags = (localStorage.getItem('customTags_' + category) || '')
-                        .split(',')
-                        .map(tag => tag.trim())
-                        .filter(tag => tag !== '');
-                    return [...activeTags, ...customTags];
-                }).flat().join(", ");
+                const combinedPrompt = generatePrompt();
                 tagArea = document.querySelectorAll("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']")[0];
                 tagArea.value = combinedPrompt;
                 saveSelectionsToLocalStorage();
@@ -220,7 +226,13 @@
     }
 
     function createCheckbox(item, category, container) {
-        const checkboxLabel = $('<label></label>').css({'color': '#333', 'display': 'flex', 'align-items': 'center', 'white-space': 'nowrap', 'margin-right': '10px'});
+        const checkboxLabel = $('<label></label>').css({
+            'color': '#333', 
+            'display': 'flex', 
+            'align-items': 'center', 
+            'white-space': 'nowrap', 
+            'margin-right': '10px'
+        });
         const checkbox = $('<input type="checkbox">').val(item).css({'margin-right': '5px'});
         const tag = selectedOptions[category].find(tag => tag.name === item);
         checkbox.prop('checked', tag.active);
@@ -228,13 +240,68 @@
             tag.active = this.checked;
             saveSelectionsToLocalStorage();
         });
-        const deleteButton = $('<button class="delete-button">×</button>').css({'margin-left': '5px', 'padding': '2px 5px', 'border-radius': '3px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#ff4d4d', 'color': '#fff', 'display': 'none'})
-            .click(() => {
-                selectedOptions[category] = selectedOptions[category].filter(t => t.name !== item);
-                saveSelectionsToLocalStorage();
-                checkboxLabel.remove();
-            });
-        checkboxLabel.append(checkbox).append(item).append(deleteButton);
+
+        // Create weight control
+        const weightControl = $('<div class="weight-control"></div>').css({
+            'display': 'none',
+            'align-items': 'center',
+            'margin-left': '5px'
+        });
+        const weightInput = $('<input type="number" step="0.05" min="0.5" max="1.5">')
+            .css({
+                'width': '40px',
+                'margin': '0 5px',
+                'display': 'none'
+            })
+            .val(tag.weight || 1);
+        const decreaseButton = $('<button>-</button>').css({'padding': '0 5px'});
+        const increaseButton = $('<button>+</button>').css({'padding': '0 5px'});
+
+        decreaseButton.click(() => updateWeight(-0.05));
+        increaseButton.click(() => updateWeight(0.05));
+        weightInput.on('input', () => {
+            tag.weight = parseFloat(weightInput.val());
+            updateWeightDisplay();
+            saveSelectionsToLocalStorage();
+        });
+
+        function updateWeight(change) {
+            let newWeight = (tag.weight || 1) + change;
+            newWeight = Math.round(newWeight * 20) / 20; // Round to nearest 0.05
+            newWeight = Math.max(0.5, Math.min(1.5, newWeight)); // Clamp between 0.5 and 1.5
+            tag.weight = newWeight;
+            weightInput.val(newWeight);
+            updateWeightDisplay();
+            saveSelectionsToLocalStorage();
+        }
+
+        function updateWeightDisplay() {
+            if (tag.weight === 1) {
+                weightInput.hide();
+            } else {
+                weightInput.show().val(tag.weight);
+            }
+        }
+
+        weightControl.append(decreaseButton, weightInput, increaseButton);
+        checkboxLabel.append(checkbox, item, weightControl);
+
+        const deleteButton = $('<button class="delete-button">×</button>').css({
+            'margin-left': '5px',
+            'padding': '2px 5px',
+            'border-radius': '3px',
+            'border': 'none',
+            'cursor': 'pointer',
+            'background-color': '#ff4d4d',
+            'color': '#fff',
+            'display': 'none'
+        }).click(() => {
+            selectedOptions[category] = selectedOptions[category].filter(t => t.name !== item);
+            saveSelectionsToLocalStorage();
+            checkboxLabel.remove();
+        });
+
+        checkboxLabel.append(deleteButton);
         container.append(checkboxLabel);
     }
 
@@ -262,6 +329,30 @@
             let sidebar = textAreas[0].closest('div').parentElement;
             $(sidebar).prepend(composeButton);
         }
+    }
+
+    // Modify the generate prompt function
+    function generatePrompt() {
+        return Object.keys(selectedOptions).map(category => {
+            const activeTags = selectedOptions[category]
+                .filter(tag => tag.active)
+                .map(tag => {
+                    let tagText = tag.name;
+                    if (tag.weight > 1) {
+                        const repetitions = Math.floor((tag.weight - 1) / 0.05);
+                        tagText = '{'.repeat(repetitions) + tagText + '}'.repeat(repetitions);
+                    } else if (tag.weight < 1) {
+                        const repetitions = Math.floor((1 - tag.weight) / 0.05);
+                        tagText = '['.repeat(repetitions) + tagText + ']'.repeat(repetitions);
+                    }
+                    return tagText;
+                });
+            const customTags = (localStorage.getItem('customTags_' + category) || '')
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag !== '');
+            return [...activeTags, ...customTags];
+        }).flat().join(", ");
     }
 
     $(onReady);
