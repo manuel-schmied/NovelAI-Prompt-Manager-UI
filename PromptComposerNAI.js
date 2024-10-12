@@ -40,7 +40,7 @@
                 'border': '2px solid #333',
                 'border-radius': '10px',
                 'z-index': '9999999999',
-                'width': '400px',
+                'width': '600px', // Increased width from 400px to 600px
                 'max-height': '80%',
                 'display': 'flex',
                 'flex-direction': 'column',
@@ -49,6 +49,22 @@
 
         const title = $('<h3>Prompt Composer</h3>').css({'text-align': 'center', 'margin-bottom': '20px', 'color': '#333'});
         modalDiv.append(title);
+
+        // Add a single "Edit Tags" button at the top
+        const editButton = $('<button>Edit Tags</button>').css({
+            'margin-bottom': '20px',
+            'padding': '5px 10px',
+            'border-radius': '5px',
+            'border': 'none',
+            'cursor': 'pointer',
+            'background-color': '#666',
+            'color': '#fff',
+            'align-self': 'flex-start'
+        }).click(() => {
+            $('.add-tag-container').toggle();
+            $('.delete-button').toggle();
+        });
+        modalDiv.append(editButton);
 
         // Use stored categories as fallback
         let categories = JSON.parse(localStorage.getItem('promptComposerSelectedOptions')) || {
@@ -81,7 +97,7 @@
             });
 
             // Create add tag input and button (initially hidden)
-            const addTagContainer = $('<div></div>').css({'display': 'flex', 'margin-top': '10px', 'display': 'none'});
+            const addTagContainer = $('<div class="add-tag-container"></div>').css({'display': 'flex', 'margin-top': '10px', 'display': 'none'});
             const addTagInput = $('<input type="text">').css({'flex-grow': '1', 'padding': '5px', 'border-radius': '5px', 'border': '1px solid #333'}).attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
             const addTagButton = $('<button>Add</button>').css({'margin-left': '10px', 'padding': '5px 10px', 'border-radius': '5px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#333', 'color': '#fff'})
                 .click(() => {
@@ -95,21 +111,6 @@
                 });
             addTagContainer.append(addTagInput).append(addTagButton);
             categoryContainer.append(addTagContainer);
-
-            // Button to show/hide add tag and delete buttons
-            const editButton = $('<button>Edit Tags</button>').css({
-                'margin-top': '10px',
-                'padding': '5px 10px',
-                'border-radius': '5px',
-                'border': 'none',
-                'cursor': 'pointer',
-                'background-color': '#666',
-                'color': '#fff'
-            }).click(() => {
-                addTagContainer.toggle();
-                categoryContainer.find('.delete-button').toggle();
-            });
-            categoryContainer.append(editButton);
 
             // Create multiline text area
             const textArea = $('<textarea></textarea>')
