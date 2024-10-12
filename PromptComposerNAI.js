@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Prompt Composer NAI
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Helps compose a complete prompt for NovelAI Image generation, with segmented categories such as artists, participants, backgrounds, emotions.
+// @version      2.2
+// @description  Helps compose a complete prompt for NovelAI Image generation, with segmented categories such as artists, participants, backgrounds, emotions. Allows adding and removing tags with persistent selections saved in local storage, using an array of objects for each tag entry to track state.
 // @author       Your Name
 // @license      MIT
 // @match        http*://novelai.net/image
@@ -13,10 +13,23 @@
     'use strict';
 
     let tagArea = null;
+    let selectedOptions = JSON.parse(localStorage.getItem('promptComposerSelectedOptions')) || {
+        "Artists": [],
+        "Participants": [],
+        "Backgrounds": [],
+        "Emotions": []
+    };
+
+    function saveSelectionsToLocalStorage() {
+        localStorage.setItem('promptComposerSelectedOptions', JSON.stringify(selectedOptions));
+    }
 
     function openPromptComposer() {
+        // Remove existing modal if present to ensure only one instance is active
+        $('#promptComposerModal').remove();
+
         // Create modal container
-        const modalDiv = $('<div></div>')
+        const modalDiv = $('<div id="promptComposerModal"></div>')
             .css({
                 'position': 'fixed',
                 'top': '50%',
@@ -37,51 +50,63 @@
         const title = $('<h3>Prompt Composer</h3>').css({'text-align': 'center', 'margin-bottom': '20px', 'color': '#333'});
         modalDiv.append(title);
 
-        // Categories for prompt
-        const categories = {
-            "Artists": ["Van Gogh", "Da Vinci", "Picasso", "Hokusai"],
-            "Participants": ["Knight", "Dragon", "Princess", "Samurai"],
-            "Backgrounds": ["Forest", "Castle", "Space", "Underwater"],
-            "Emotions": ["Mystical", "Epic", "Serene", "Chaotic"]
+        // Use stored categories as fallback
+        let categories = JSON.parse(localStorage.getItem('promptComposerSelectedOptions')) || {
+            "Artists": [{ name: "Van Gogh", active: false }, { name: "Da Vinci", active: false }, { name: "Picasso", active: false }, { name: "Hokusai", active: false }],
+            "Participants": [{ name: "Knight", active: false }, { name: "Dragon", active: false }, { name: "Princess", active: false }, { name: "Samurai", active: false }],
+            "Backgrounds": [{ name: "Forest", active: false }, { name: "Castle", active: false }, { name: "Space", active: false }, { name: "Underwater", active: false }],
+            "Emotions": [{ name: "Mystical", active: false }, { name: "Epic", active: false }, { name: "Serene", active: false }, { name: "Chaotic", active: false }]
         };
 
-        // Object to store user selections
-        let selectedOptions = {
-            "Artists": [],
-            "Participants": [],
-            "Backgrounds": [],
-            "Emotions": []
-        };
-
-        // Create checkboxes and text area for each category
-        for (let category in categories) {
+        // Create checkboxes, text area, and add/remove functionality for each category
+        for (let category in selectedOptions) {
             const categoryContainer = $('<div></div>').css({'margin-bottom': '15px'});
             const label = $('<label></label>').text(category + ':').css({'font-weight': 'bold', 'color': '#333'});
             categoryContainer.append(label);
 
             // Create checkboxes for tags
             const checkboxContainer = $('<div></div>').css({'display': 'flex', 'flex-wrap': 'wrap', 'margin-top': '5px', 'gap': '10px'});
-            categories[category].forEach(item => {
-                const checkboxLabel = $('<label></label>').css({'color': '#333', 'display': 'flex', 'align-items': 'center', 'white-space': 'nowrap'});
-                const checkbox = $('<input type="checkbox">').val(item).css({'margin-right': '5px'});
-                checkbox.change(function() {
-                    if (this.checked) {
-                        selectedOptions[category].push(item);
-                    } else {
-                        selectedOptions[category] = selectedOptions[category].filter(val => val !== item);
-                    }
-                });
-                checkboxLabel.append(checkbox).append(item);
-                checkboxContainer.append(checkboxLabel);
+            selectedOptions[category] = selectedOptions[category].filter(tag => tag.active || categories[category].some(cat => cat.name === tag.name));
+            selectedOptions[category].forEach(tag => {
+                createCheckbox(tag.name, category, checkboxContainer);
             });
             categoryContainer.append(checkboxContainer);
+
+            // Add selected tags that are not in predefined categories
+            categories[category].forEach(tag => {
+                if (!selectedOptions[category].some(selectedTag => selectedTag.name === tag.name)) {
+                    selectedOptions[category].push(tag);
+                    createCheckbox(tag.name, category, checkboxContainer);
+                }
+            });
+
+            // Create add tag input and button
+            const addTagContainer = $('<div></div>').css({'display': 'flex', 'margin-top': '10px'});
+            const addTagInput = $('<input type="text">').css({'flex-grow': '1', 'padding': '5px', 'border-radius': '5px', 'border': '1px solid #333'}).attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
+            const addTagButton = $('<button>Add</button>').css({'margin-left': '10px', 'padding': '5px 10px', 'border-radius': '5px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#333', 'color': '#fff'})
+                .click(() => {
+                    const newTag = addTagInput.val().trim();
+                    if (newTag && !selectedOptions[category].some(tag => tag.name === newTag)) {
+                        selectedOptions[category].push({ name: newTag, active: true });
+                        createCheckbox(newTag, category, checkboxContainer);
+                        addTagInput.val('');
+                        saveSelectionsToLocalStorage();
+                    }
+                });
+            addTagContainer.append(addTagInput).append(addTagButton);
+            categoryContainer.append(addTagContainer);
 
             // Create multiline text area
             const textArea = $('<textarea></textarea>')
                 .css({'width': '100%', 'margin-top': '10px', 'border-radius': '5px', 'padding': '5px'})
                 .attr('placeholder', 'Enter custom ' + category.toLowerCase() + ' here...');
+            textArea.val(selectedOptions[category].filter(tag => tag.active).map(tag => tag.name).join(', '));
             textArea.on('input', function() {
-                selectedOptions[category] = $(this).val().split(',').map(val => val.trim()).filter(val => val !== "");
+                const values = $(this).val().split(',').map(val => val.trim()).filter(val => val !== "");
+                selectedOptions[category].forEach(tag => {
+                    tag.active = values.includes(tag.name);
+                });
+                saveSelectionsToLocalStorage();
             });
 
             categoryContainer.append(textArea);
@@ -101,9 +126,12 @@
                 'margin-bottom': '10px'
             })
             .click(() => {
-                const combinedPrompt = Object.values(selectedOptions).flat().filter(val => val !== "").join(", ");
+                const combinedPrompt = Object.keys(selectedOptions).map(category => {
+                    return selectedOptions[category].filter(tag => tag.active).map(tag => tag.name);
+                }).flat().join(", ");
                 tagArea = document.querySelectorAll("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']")[0];
                 tagArea.value = combinedPrompt;
+                saveSelectionsToLocalStorage();
                 modalDiv.remove();
             });
 
@@ -120,6 +148,7 @@
                 'width': '100%'
             })
             .click(() => {
+                saveSelectionsToLocalStorage();
                 modalDiv.remove();
             });
 
@@ -127,8 +156,27 @@
         $('body').append(modalDiv);
     }
 
+    function createCheckbox(item, category, container) {
+        const checkboxLabel = $('<label></label>').css({'color': '#333', 'display': 'flex', 'align-items': 'center', 'white-space': 'nowrap', 'margin-right': '10px'});
+        const checkbox = $('<input type="checkbox">').val(item).css({'margin-right': '5px'});
+        const tag = selectedOptions[category].find(tag => tag.name === item);
+        checkbox.prop('checked', tag.active);
+        checkbox.change(function() {
+            tag.active = this.checked;
+            saveSelectionsToLocalStorage();
+        });
+        const deleteButton = $('<button>×</button>').css({'margin-left': '5px', 'padding': '2px 5px', 'border-radius': '3px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#ff4d4d', 'color': '#fff'})
+            .click(() => {
+                selectedOptions[category] = selectedOptions[category].filter(t => t.name !== item);
+                saveSelectionsToLocalStorage();
+                checkboxLabel.remove();
+            });
+        checkboxLabel.append(checkbox).append(item).append(deleteButton);
+        container.append(checkboxLabel);
+    }
+
     function onReady() {
-        setTimeout(placeComposerButton, 5000); // Add a delay of 5 seconds to ensure elements are loaded
+        setTimeout(placeComposerButton, 3000); // Add a delay of 3 seconds to ensure elements are loaded
     }
 
     function placeComposerButton() {
