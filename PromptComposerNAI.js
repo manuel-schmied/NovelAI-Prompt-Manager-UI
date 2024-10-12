@@ -150,17 +150,19 @@
             addTagContainer.append(addTagInput).append(addTagButton);
             categoryContainer.append(addTagContainer);
 
-            // Create multiline text area
+            // Modify the text area functionality
             const textArea = $('<textarea></textarea>')
                 .css({'width': '100%', 'margin-top': '10px', 'border-radius': '5px', 'padding': '5px'})
-                .attr('placeholder', 'Enter custom ' + category.toLowerCase() + ' here...');
-            textArea.val(selectedOptions[category].filter(tag => tag.active).map(tag => tag.name).join(', '));
+                .attr('placeholder', 'Enter additional ' + category.toLowerCase() + ' here...');
+            
+            // Initialize textarea with custom tags not in checkboxes
+            const checkboxTags = selectedOptions[category].map(tag => tag.name);
+            const customTags = localStorage.getItem('customTags_' + category) || '';
+            textArea.val(customTags);
+
             textArea.on('input', function() {
-                const values = $(this).val().split(',').map(val => val.trim()).filter(val => val !== "");
-                selectedOptions[category].forEach(tag => {
-                    tag.active = values.includes(tag.name);
-                });
-                saveSelectionsToLocalStorage();
+                const customTagsValue = $(this).val().trim();
+                localStorage.setItem('customTags_' + category, customTagsValue);
             });
 
             categoryContainer.append(textArea);
@@ -181,7 +183,14 @@
             })
             .click(() => {
                 const combinedPrompt = Object.keys(selectedOptions).map(category => {
-                    return selectedOptions[category].filter(tag => tag.active).map(tag => tag.name);
+                    const activeTags = selectedOptions[category]
+                        .filter(tag => tag.active)
+                        .map(tag => tag.name);
+                    const customTags = (localStorage.getItem('customTags_' + category) || '')
+                        .split(',')
+                        .map(tag => tag.trim())
+                        .filter(tag => tag !== '');
+                    return [...activeTags, ...customTags];
                 }).flat().join(", ");
                 tagArea = document.querySelectorAll("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']")[0];
                 tagArea.value = combinedPrompt;
