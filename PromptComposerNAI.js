@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Prompt Composer NAI
 // @namespace    http://tampermonkey.net/
-// @version      2.2
-// @description  Helps compose a complete prompt for NovelAI Image generation, with segmented categories such as artists, participants, backgrounds, emotions. Allows adding and removing tags with persistent selections saved in local storage, using an array of objects for each tag entry to track state.
+// @version      2.3
+// @description  Helps compose a complete prompt for NovelAI Image generation, with segmented categories such as artists, participants, backgrounds, emotions. Allows adding and removing tags with persistent selections saved in local storage, using an array of objects for each tag entry to track state. The add tag input and delete buttons are usually hidden and shown on demand to reduce clutter.
 // @author       Your Name
 // @license      MIT
 // @match        http*://novelai.net/image
@@ -80,8 +80,8 @@
                 }
             });
 
-            // Create add tag input and button
-            const addTagContainer = $('<div></div>').css({'display': 'flex', 'margin-top': '10px'});
+            // Create add tag input and button (initially hidden)
+            const addTagContainer = $('<div></div>').css({'display': 'flex', 'margin-top': '10px', 'display': 'none'});
             const addTagInput = $('<input type="text">').css({'flex-grow': '1', 'padding': '5px', 'border-radius': '5px', 'border': '1px solid #333'}).attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
             const addTagButton = $('<button>Add</button>').css({'margin-left': '10px', 'padding': '5px 10px', 'border-radius': '5px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#333', 'color': '#fff'})
                 .click(() => {
@@ -95,6 +95,21 @@
                 });
             addTagContainer.append(addTagInput).append(addTagButton);
             categoryContainer.append(addTagContainer);
+
+            // Button to show/hide add tag and delete buttons
+            const editButton = $('<button>Edit Tags</button>').css({
+                'margin-top': '10px',
+                'padding': '5px 10px',
+                'border-radius': '5px',
+                'border': 'none',
+                'cursor': 'pointer',
+                'background-color': '#666',
+                'color': '#fff'
+            }).click(() => {
+                addTagContainer.toggle();
+                categoryContainer.find('.delete-button').toggle();
+            });
+            categoryContainer.append(editButton);
 
             // Create multiline text area
             const textArea = $('<textarea></textarea>')
@@ -165,7 +180,7 @@
             tag.active = this.checked;
             saveSelectionsToLocalStorage();
         });
-        const deleteButton = $('<button>×</button>').css({'margin-left': '5px', 'padding': '2px 5px', 'border-radius': '3px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#ff4d4d', 'color': '#fff'})
+        const deleteButton = $('<button class="delete-button">×</button>').css({'margin-left': '5px', 'padding': '2px 5px', 'border-radius': '3px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#ff4d4d', 'color': '#fff', 'display': 'none'})
             .click(() => {
                 selectedOptions[category] = selectedOptions[category].filter(t => t.name !== item);
                 saveSelectionsToLocalStorage();
