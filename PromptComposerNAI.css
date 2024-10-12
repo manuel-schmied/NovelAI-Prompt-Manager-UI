@@ -154,6 +154,7 @@
 .add-category-container {
     display: flex;
     margin-bottom: 15px;
+    align-items: center;
 }
 
 .add-category-input {
@@ -184,6 +185,7 @@
 .category-management-buttons {
     display: flex;
     align-items: center;
+    margin-left: 10px;
 }
 
 .delete-category-button {
@@ -201,6 +203,10 @@
     background-color: #ff3333;
 }
 
+.delete-category-button:active {
+    background-color: #e60000;
+}
+
 .move-category-button {
     background-color: #4CAF50;
     color: white;
@@ -216,6 +222,13 @@
 
 .move-category-button:hover {
     background-color: #45a049;
+}
+
+.move-category-button {
+    width: auto;
+    height: auto;
+    border-radius: 5px;
+    padding: 5px 8px;
 }
 
 .category-management {

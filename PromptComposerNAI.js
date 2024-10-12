@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Prompt Composer NAI
 // @namespace    http://tampermonkey.net/
-// @version      2.6
+// @version      2.7
 // @description  Helps compose a complete prompt for NovelAI Image generation, with customizable categories. Allows adding, removing, and reordering tags and categories with persistent selections saved in local storage.
 // @author       Manu
 // @license      MIT
@@ -17,7 +17,7 @@
     function injectCSS() {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/gh/manuel-schmied/NovelAI-Prompt-Manager-UI@master/PromptComposerNAI.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/manuel-schmied/NovelAI-Prompt-Manager-UI@testbranch/PromptComposerNAI.css';
         document.head.appendChild(link);
     }
 
