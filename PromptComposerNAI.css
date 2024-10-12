@@ -240,3 +240,24 @@
 .bottom-buttons-container {
     margin-top: 20px;
 }
+
+@media screen and (min-width: 1200px) {
+    .prompt-composer-modal {
+        width: 1000px; /* Increased width for larger screens */
+    }
+
+    .categories-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .category-container {
+        width: 48%; /* Slightly less than 50% to account for margins */
+    }
+}
+
+.categories-container {
+    max-height: 60vh; /* Limit the height and enable scrolling if needed */
+    overflow-y: auto;
+}

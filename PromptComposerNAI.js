@@ -17,7 +17,7 @@
     function injectCSS() {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/gh/manuel-schmied/NovelAI-Prompt-Manager-UI@testbranch/PromptComposerNAI.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/manuel-schmied/NovelAI-Prompt-Manager-UI@testbranch2/PromptComposerNAI.css';
         document.head.appendChild(link);
     }
 
@@ -103,6 +103,7 @@
 
             // Create a container for categories
             categoriesContainer = $('<div></div>').addClass('categories-container');
+            modalDiv.append(categoryManagement);
             modalDiv.append(categoriesContainer);
 
             renderCategories();
@@ -129,9 +130,25 @@
             modalDiv.append(bottomButtonsContainer);
 
             $('body').append(modalDiv);
+            
+            // Adjust layout based on screen size
+            adjustLayout();
+            
+            $(window).on('resize', adjustLayout);
+            
             console.log("Modal appended to body");
         } catch (error) {
             console.error("Error in openPromptComposer:", error);
+        }
+    }
+
+    function adjustLayout() {
+        if ($(window).width() >= 1200) {
+            $('.category-container').css('width', '48%');
+            modalDiv.css('width', '1000px');
+        } else {
+            $('.category-container').css('width', '100%');
+            modalDiv.css('width', '600px');
         }
     }
 
@@ -224,7 +241,7 @@
         });
 
         categoryContainer.append(textArea);
-        modalDiv.append(categoryContainer);
+        categoriesContainer.append(categoryContainer);
     }
 
     function createCheckbox(tag, categoryName, container) {
