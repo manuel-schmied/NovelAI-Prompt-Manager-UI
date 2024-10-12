@@ -50,16 +50,22 @@
         const title = $('<h3>Prompt Composer</h3>').css({'text-align': 'center', 'margin-bottom': '20px', 'color': '#333'});
         modalDiv.append(title);
 
-        // Add a single "Edit Tags" button at the top
+        // Create a container for the buttons
+        const buttonContainer = $('<div></div>').css({
+            'display': 'flex',
+            'justify-content': 'flex-start',
+            'margin-bottom': '20px'
+        });
+
+        // Add a single "Edit Tags" button
         const editButton = $('<button>Edit Tags</button>').css({
-            'margin-bottom': '20px',
             'padding': '5px 10px',
             'border-radius': '5px',
             'border': 'none',
             'cursor': 'pointer',
             'background-color': '#666',
             'color': '#fff',
-            'align-self': 'flex-start'
+            'margin-right': '10px'
         }).click(() => {
             $('.add-tag-container').toggle();
             $('.delete-button').toggle();
@@ -70,19 +76,16 @@
                 }
             });
         });
-        modalDiv.append(editButton);
+        buttonContainer.append(editButton);
 
         // Add a "Toggle Weights" button next to the "Edit Tags" button
         const weightToggleButton = $('<button>Toggle Weights</button>').css({
-            'margin-bottom': '20px',
-            'margin-left': '10px',
             'padding': '5px 10px',
             'border-radius': '5px',
             'border': 'none',
             'cursor': 'pointer',
             'background-color': '#666',
-            'color': '#fff',
-            'align-self': 'flex-start' // Add this to match the Edit Tags button
+            'color': '#fff'
         }).click(() => {
             $('.weight-control').toggle();
             $('.weight-control').each(function() {
@@ -90,7 +93,10 @@
                 updateWeightDisplay(weightInput);
             });
         });
-        editButton.after(weightToggleButton);
+        buttonContainer.append(weightToggleButton);
+
+        // Append the button container to the modal
+        modalDiv.append(buttonContainer);
 
         // Use stored categories as fallback
         let categories = JSON.parse(localStorage.getItem('promptComposerSelectedOptions')) || {
