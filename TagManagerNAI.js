@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tag manager NAI
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  tag save loader for NovelAI Image gen
 // @author       sllypper, me
 // @license      MIT
@@ -50,6 +50,7 @@ function restoreTags() {
         });
 
     labels.forEach(label => {
+        const labelContainer = $('<div></div>').css({'margin-bottom': '10px'});
         const labelButton = $('<button></button>')
             .text(label)
             .css(btnLoadCss())
@@ -58,7 +59,29 @@ function restoreTags() {
                 tagArea.value = savedPrompts[label];
                 listDiv.remove();
             });
-        listDiv.append(labelButton).append('<br>');
+        
+        const editButton = $('<button>Edit</button>')
+            .css(btnLoadCss())
+            .click(() => {
+                const newTags = prompt("Edit tags for label: " + label, savedPrompts[label]);
+                if (newTags !== null) {
+                    savedPrompts[label] = newTags;
+                    localStorage.setItem('savedPrompts', JSON.stringify(savedPrompts));
+                }
+            });
+
+        const deleteButton = $('<button>Delete</button>')
+            .css(btnLoadCss())
+            .click(() => {
+                if (confirm("Are you sure you want to delete the tags for label: " + label + "?")) {
+                    delete savedPrompts[label];
+                    localStorage.setItem('savedPrompts', JSON.stringify(savedPrompts));
+                    labelContainer.remove();
+                }
+            });
+
+        labelContainer.append(labelButton).append(editButton).append(deleteButton);
+        listDiv.append(labelContainer);
     });
 
     const cancelButton = $('<button>Cancel</button>')
