@@ -82,8 +82,13 @@
             'cursor': 'pointer',
             'background-color': '#666',
             'color': '#fff',
+            'align-self': 'flex-start' // Add this to match the Edit Tags button
         }).click(() => {
             $('.weight-control').toggle();
+            $('.weight-control').each(function() {
+                const weightInput = $(this).find('input[type="number"]');
+                updateWeightDisplay(weightInput);
+            });
         });
         editButton.after(weightToggleButton);
 
@@ -250,8 +255,7 @@
         const weightInput = $('<input type="number" step="0.05" min="0.5" max="1.5">')
             .css({
                 'width': '40px',
-                'margin': '0 5px',
-                'display': 'none'
+                'margin': '0 5px'
             })
             .val(tag.weight || 1);
         const decreaseButton = $('<button>-</button>').css({'padding': '0 5px'});
@@ -261,7 +265,7 @@
         increaseButton.click(() => updateWeight(0.05));
         weightInput.on('input', () => {
             tag.weight = parseFloat(weightInput.val());
-            updateWeightDisplay();
+            updateWeightDisplay(weightInput);
             saveSelectionsToLocalStorage();
         });
 
@@ -271,17 +275,11 @@
             newWeight = Math.max(0.5, Math.min(1.5, newWeight)); // Clamp between 0.5 and 1.5
             tag.weight = newWeight;
             weightInput.val(newWeight);
-            updateWeightDisplay();
+            updateWeightDisplay(weightInput);
             saveSelectionsToLocalStorage();
         }
 
-        function updateWeightDisplay() {
-            if (tag.weight === 1) {
-                weightInput.hide();
-            } else {
-                weightInput.show().val(tag.weight);
-            }
-        }
+        updateWeightDisplay(weightInput);
 
         weightControl.append(decreaseButton, weightInput, increaseButton);
         checkboxLabel.append(checkbox, item, weightControl);
@@ -339,10 +337,10 @@
                 .map(tag => {
                     let tagText = tag.name;
                     if (tag.weight > 1) {
-                        const repetitions = Math.floor((tag.weight - 1) / 0.05);
+                        const repetitions = Math.round((tag.weight - 1) / 0.05);
                         tagText = '{'.repeat(repetitions) + tagText + '}'.repeat(repetitions);
                     } else if (tag.weight < 1) {
-                        const repetitions = Math.floor((1 - tag.weight) / 0.05);
+                        const repetitions = Math.round((1 - tag.weight) / 0.05);
                         tagText = '['.repeat(repetitions) + tagText + ']'.repeat(repetitions);
                     }
                     return tagText;
@@ -353,6 +351,16 @@
                 .filter(tag => tag !== '');
             return [...activeTags, ...customTags];
         }).flat().join(", ");
+    }
+
+    // Add this function outside of createCheckbox
+    function updateWeightDisplay(weightInput) {
+        const weight = parseFloat(weightInput.val());
+        if (weight === 1) {
+            weightInput.hide();
+        } else {
+            weightInput.show().val(weight);
+        }
     }
 
     $(onReady);
