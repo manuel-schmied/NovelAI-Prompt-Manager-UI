@@ -1,0 +1,144 @@
+.prompt-composer-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #f9f9f9;
+    padding: 20px;
+    border: 2px solid #333;
+    border-radius: 10px;
+    z-index: 9999999999;
+    width: 600px;
+    max-height: 80%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.prompt-composer-title {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.button-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.toggle-button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background-color: #666;
+    color: #fff;
+    margin-right: 10px;
+}
+
+.category-container {
+    margin-bottom: 15px;
+}
+
+.category-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.checkbox-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 5px;
+    gap: 10px;
+}
+
+.checkbox-label {
+    color: #333;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-right: 10px;
+}
+
+.checkbox-input {
+    margin-right: 5px;
+}
+
+.weight-display {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.weight-control {
+    display: none;
+    align-items: center;
+    margin-left: 5px;
+}
+
+.weight-input {
+    width: 40px;
+    margin: 0 5px;
+}
+
+.weight-button {
+    padding: 0 5px;
+}
+
+.delete-button {
+    margin-left: 5px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    background-color: #ff4d4d;
+    color: #fff;
+    display: none;
+}
+
+.add-tag-container {
+    display: none;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.add-tag-input {
+    flex-grow: 1;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    margin-right: 10px;
+}
+
+.add-tag-button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background-color: #333;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.tag-textarea {
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.generate-button, .close-button {
+    color: #333;
+    background-color: rgb(246, 245, 244);
+    font-size: medium;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.close-button {
+    background-color: #ccc;
+    width: 100%;
+}
