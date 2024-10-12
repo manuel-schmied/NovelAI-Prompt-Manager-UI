@@ -63,6 +63,12 @@
         }).click(() => {
             $('.add-tag-container').toggle();
             $('.delete-button').toggle();
+            // Set display to flex when visible
+            $('.add-tag-container').each(function() {
+                if ($(this).is(':visible')) {
+                    $(this).css('display', 'flex');
+                }
+            });
         });
         modalDiv.append(editButton);
 
@@ -97,18 +103,50 @@
             });
 
             // Create add tag input and button (initially hidden)
-            const addTagContainer = $('<div class="add-tag-container"></div>').css({'display': 'flex', 'margin-top': '10px', 'display': 'none'});
-            const addTagInput = $('<input type="text">').css({'flex-grow': '1', 'padding': '5px', 'border-radius': '5px', 'border': '1px solid #333'}).attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
-            const addTagButton = $('<button>Add</button>').css({'margin-left': '10px', 'padding': '5px 10px', 'border-radius': '5px', 'border': 'none', 'cursor': 'pointer', 'background-color': '#333', 'color': '#fff'})
-                .click(() => {
-                    const newTag = addTagInput.val().trim();
-                    if (newTag && !selectedOptions[category].some(tag => tag.name === newTag)) {
-                        selectedOptions[category].push({ name: newTag, active: true });
-                        createCheckbox(newTag, category, checkboxContainer);
-                        addTagInput.val('');
-                        saveSelectionsToLocalStorage();
-                    }
+            const addTagContainer = $('<div class="add-tag-container"></div>').css({
+                'display': 'none',
+                'margin-top': '10px',
+                'align-items': 'center'  // This ensures vertical alignment
+            });
+            const addTagInput = $('<input type="text">')
+                .css({
+                    'flex-grow': '1',
+                    'padding': '5px',
+                    'border-radius': '5px',
+                    'border': '1px solid #333',
+                    'margin-right': '10px'  // Add some space between input and button
+                })
+                .attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
+            const addTagButton = $('<button>Add</button>')
+                .css({
+                    'padding': '5px 10px',
+                    'border-radius': '5px',
+                    'border': 'none',
+                    'cursor': 'pointer',
+                    'background-color': '#333',
+                    'color': '#fff',
+                    'white-space': 'nowrap'  // Prevent button text from wrapping
                 });
+            
+            const addNewTag = () => {
+                const newTag = addTagInput.val().trim();
+                if (newTag && !selectedOptions[category].some(tag => tag.name === newTag)) {
+                    selectedOptions[category].push({ name: newTag, active: true });
+                    createCheckbox(newTag, category, checkboxContainer);
+                    addTagInput.val('');
+                    saveSelectionsToLocalStorage();
+                }
+            };
+
+            addTagButton.click(addNewTag);
+            
+            addTagInput.keypress(function(e) {
+                if(e.which == 13) { // Enter key
+                    e.preventDefault();
+                    addNewTag();
+                }
+            });
+
             addTagContainer.append(addTagInput).append(addTagButton);
             categoryContainer.append(addTagContainer);
 
