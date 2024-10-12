@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Prompt Composer NAI
 // @namespace    http://tampermonkey.net/
-// @version      2.4
-// @description  Helps compose a complete prompt for NovelAI Image generation, with customizable categories. Allows adding and removing tags and categories with persistent selections saved in local storage.
+// @version      2.6
+// @description  Helps compose a complete prompt for NovelAI Image generation, with customizable categories. Allows adding, removing, and reordering tags and categories with persistent selections saved in local storage.
 // @author       Manu
 // @license      MIT
 // @match        http*://novelai.net/image
@@ -11,6 +11,7 @@
 
 (function() {
     'use strict';
+
 
     // Function to inject CSS
     function injectCSS() {
@@ -24,15 +25,28 @@
     injectCSS();
 
     let tagArea = null;
-    let selectedOptions = JSON.parse(localStorage.getItem('promptComposerSelectedOptions')) || {
-        "Artists": [],
-        "Participants": [],
-        "Backgrounds": [],
-        "Emotions": []
+    let promptComposerData = JSON.parse(localStorage.getItem('promptComposerData')) || {
+        categories: [
+            {name: "Artists", tags: []},
+            {name: "Participants", tags: []},
+            {name: "Backgrounds", tags: []},
+            {name: "Emotions", tags: []}
+        ],
+        customTags: {}
     };
 
-    function saveSelectionsToLocalStorage() {
-        localStorage.setItem('promptComposerSelectedOptions', JSON.stringify(selectedOptions));
+    function saveToLocalStorage() {
+        localStorage.setItem('promptComposerData', JSON.stringify(promptComposerData));
+    }
+
+    let modalDiv; // Declare modalDiv in the global scope
+    let categoriesContainer;
+
+    function renderCategories() {
+        categoriesContainer.empty();
+        promptComposerData.categories.forEach((category, index) => {
+            createCategorySection(category, index, categoriesContainer);
+        });
     }
 
     function openPromptComposer() {
@@ -40,7 +54,7 @@
         try {
             $('#promptComposerModal').remove();
 
-            const modalDiv = $('<div id="promptComposerModal"></div>').addClass('prompt-composer-modal');
+            modalDiv = $('<div id="promptComposerModal"></div>').addClass('prompt-composer-modal');
             const title = $('<h3>Prompt Composer</h3>').addClass('prompt-composer-title');
             modalDiv.append(title);
 
@@ -62,7 +76,7 @@
                 });
             });
             const categoryManagementButton = $('<button>Manage Categories</button>').addClass('toggle-button').click(() => {
-                $('.category-management').toggle();
+                $('.category-management, .move-category-button, .delete-category-button').toggle();
             });
             buttonContainer.append(editButton, weightToggleButton, categoryManagementButton);
             modalDiv.append(buttonContainer);
@@ -75,9 +89,9 @@
             const addCategoryButton = $('<button>Add Category</button>').addClass('add-category-button')
                 .click(() => {
                     const newCategory = addCategoryInput.val().trim();
-                    if (newCategory && !selectedOptions.hasOwnProperty(newCategory)) {
-                        selectedOptions[newCategory] = [];
-                        saveSelectionsToLocalStorage();
+                    if (newCategory && !promptComposerData.categories.some(cat => cat.name === newCategory)) {
+                        promptComposerData.categories.push({name: newCategory, tags: []});
+                        saveToLocalStorage();
                         addCategoryInput.val('');
                         renderCategories();
                     }
@@ -86,31 +100,33 @@
             categoryManagement.append(addCategoryContainer);
             modalDiv.append(categoryManagement);
 
-            function renderCategories() {
-                $('.category-container').remove();
-                for (let category in selectedOptions) {
-                    createCategorySection(category, modalDiv);
-                }
-            }
+            // Create a container for categories
+            categoriesContainer = $('<div></div>').addClass('categories-container');
+            modalDiv.append(categoriesContainer);
 
             renderCategories();
+
+            // Create a container for the bottom buttons
+            const bottomButtonsContainer = $('<div></div>').addClass('bottom-buttons-container');
 
             const generateButton = $('<button>Generate Prompt</button>').addClass('generate-button')
                 .click(() => {
                     const combinedPrompt = generatePrompt();
                     tagArea = document.querySelectorAll("[placeholder='Write your prompt here. Use tags to sculpt your outputs.']")[0];
                     tagArea.value = combinedPrompt;
-                    saveSelectionsToLocalStorage();
+                    saveToLocalStorage();
                     modalDiv.remove();
                 });
 
             const cancelButton = $('<button>Close</button>').addClass('close-button')
                 .click(() => {
-                    saveSelectionsToLocalStorage();
+                    saveToLocalStorage();
                     modalDiv.remove();
                 });
 
-            modalDiv.append(generateButton, cancelButton);
+            bottomButtonsContainer.append(generateButton, cancelButton);
+            modalDiv.append(bottomButtonsContainer);
+
             $('body').append(modalDiv);
             console.log("Modal appended to body");
         } catch (error) {
@@ -118,37 +134,59 @@
         }
     }
 
-    function createCategorySection(category, modalDiv) {
+    function createCategorySection(category, index, modalDiv) {
         const categoryContainer = $('<div></div>').addClass('category-container');
         const categoryHeader = $('<div></div>').addClass('category-header');
-        const label = $('<label></label>').text(category + ':').addClass('category-label');
+        const label = $('<label></label>').text(category.name + ':').addClass('category-label');
+        
         const deleteCategoryButton = $('<button>×</button>').addClass('delete-category-button')
             .click(() => {
-                delete selectedOptions[category];
-                saveSelectionsToLocalStorage();
-                categoryContainer.remove();
+                promptComposerData.categories.splice(index, 1);
+                saveToLocalStorage();
+                renderCategories();
             });
-        categoryHeader.append(label, deleteCategoryButton);
+        
+        const moveCategoryUpButton = $('<button>↑</button>').addClass('move-category-button')
+            .click(() => {
+                if (index > 0) {
+                    [promptComposerData.categories[index - 1], promptComposerData.categories[index]] = 
+                    [promptComposerData.categories[index], promptComposerData.categories[index - 1]];
+                    saveToLocalStorage();
+                    renderCategories();
+                }
+            });
+        
+        const moveCategoryDownButton = $('<button>↓</button>').addClass('move-category-button')
+            .click(() => {
+                if (index < promptComposerData.categories.length - 1) {
+                    [promptComposerData.categories[index], promptComposerData.categories[index + 1]] = 
+                    [promptComposerData.categories[index + 1], promptComposerData.categories[index]];
+                    saveToLocalStorage();
+                    renderCategories();
+                }
+            });
+        
+        categoryHeader.append(label, moveCategoryUpButton, moveCategoryDownButton, deleteCategoryButton);
         categoryContainer.append(categoryHeader);
 
         const checkboxContainer = $('<div></div>').addClass('checkbox-container');
-        selectedOptions[category].forEach(tag => {
-            createCheckbox(tag.name, category, checkboxContainer);
+        category.tags.forEach(tag => {
+            createCheckbox(tag, category.name, checkboxContainer);
         });
         categoryContainer.append(checkboxContainer);
 
         const addTagContainer = $('<div></div>').addClass('add-tag-container');
         const addTagInput = $('<input type="text">').addClass('add-tag-input')
-            .attr('placeholder', 'Add new ' + category.toLowerCase() + '...');
+            .attr('placeholder', 'Add new ' + category.name.toLowerCase() + '...');
         const addTagButton = $('<button>Add</button>').addClass('add-tag-button');
         
         const addNewTag = () => {
             const newTag = addTagInput.val().trim();
-            if (newTag && !selectedOptions[category].some(tag => tag.name === newTag)) {
-                selectedOptions[category].push({ name: newTag, active: true });
-                createCheckbox(newTag, category, checkboxContainer);
+            if (newTag && !category.tags.some(tag => tag.name === newTag)) {
+                category.tags.push({ name: newTag, active: true, weight: 1 });
+                createCheckbox({ name: newTag, active: true, weight: 1 }, category.name, checkboxContainer);
                 addTagInput.val('');
-                saveSelectionsToLocalStorage();
+                saveToLocalStorage();
             }
         };
 
@@ -164,28 +202,28 @@
         categoryContainer.append(addTagContainer);
 
         const textArea = $('<textarea></textarea>').addClass('tag-textarea')
-            .attr('placeholder', 'Enter additional ' + category.toLowerCase() + ' here...');
+            .attr('placeholder', 'Enter additional ' + category.name.toLowerCase() + ' here...');
         
-        const customTags = localStorage.getItem('customTags_' + category) || '';
+        const customTags = promptComposerData.customTags[category.name] || '';
         textArea.val(customTags);
 
         textArea.on('input', function() {
             const customTagsValue = $(this).val().trim();
-            localStorage.setItem('customTags_' + category, customTagsValue);
+            promptComposerData.customTags[category.name] = customTagsValue;
+            saveToLocalStorage();
         });
 
         categoryContainer.append(textArea);
         modalDiv.append(categoryContainer);
     }
 
-    function createCheckbox(item, category, container) {
+    function createCheckbox(tag, categoryName, container) {
         const checkboxLabel = $('<label></label>').addClass('checkbox-label');
-        const checkbox = $('<input type="checkbox">').addClass('checkbox-input').val(item);
-        const tag = selectedOptions[category].find(tag => tag.name === item);
+        const checkbox = $('<input type="checkbox">').addClass('checkbox-input').val(tag.name);
         checkbox.prop('checked', tag.active);
         checkbox.change(function() {
             tag.active = this.checked;
-            saveSelectionsToLocalStorage();
+            saveToLocalStorage();
         });
 
         // Create weight display
@@ -203,7 +241,7 @@
         weightInput.on('input', () => {
             tag.weight = parseFloat(weightInput.val());
             updateWeightDisplay(tag, weightDisplay, weightControl);
-            saveSelectionsToLocalStorage();
+            saveToLocalStorage();
         });
 
         function updateWeight(change) {
@@ -213,24 +251,16 @@
             tag.weight = newWeight;
             weightInput.val(newWeight);
             updateWeightDisplay(tag, weightDisplay, weightControl);
-            saveSelectionsToLocalStorage();
+            saveToLocalStorage();
         }
 
         weightControl.append(decreaseButton, weightInput, increaseButton);
-        checkboxLabel.append(checkbox, item, weightDisplay, weightControl);
+        checkboxLabel.append(checkbox, tag.name, weightDisplay, weightControl);
 
-        const deleteButton = $('<button class="delete-button">×</button>').css({
-            'margin-left': '5px',
-            'padding': '2px 5px',
-            'border-radius': '3px',
-            'border': 'none',
-            'cursor': 'pointer',
-            'background-color': '#ff4d4d',
-            'color': '#fff',
-            'display': 'none'
-        }).click(() => {
-            selectedOptions[category] = selectedOptions[category].filter(t => t.name !== item);
-            saveSelectionsToLocalStorage();
+        const deleteButton = $('<button>×</button>').addClass('delete-button').click(() => {
+            const category = promptComposerData.categories.find(cat => cat.name === categoryName);
+            category.tags = category.tags.filter(t => t.name !== tag.name);
+            saveToLocalStorage();
             checkboxLabel.remove();
         });
 
@@ -265,10 +295,9 @@
         }
     }
 
-    // Modify the generate prompt function
     function generatePrompt() {
-        return Object.keys(selectedOptions).map(category => {
-            const activeTags = selectedOptions[category]
+        return promptComposerData.categories.map(category => {
+            const activeTags = category.tags
                 .filter(tag => tag.active)
                 .map(tag => {
                     let tagText = tag.name;
@@ -281,7 +310,7 @@
                     }
                     return tagText;
                 });
-            const customTags = (localStorage.getItem('customTags_' + category) || '')
+            const customTags = (promptComposerData.customTags[category.name] || '')
                 .split(',')
                 .map(tag => tag.trim())
                 .filter(tag => tag !== '');
@@ -289,7 +318,6 @@
         }).flat().join(", ");
     }
 
-    // Update this function to handle both the input, display, and control visibility
     function updateWeightDisplay(tag, displayElement, controlElement) {
         const weight = tag.weight || 1;
         if (weight === 1) {
