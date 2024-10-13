@@ -1,24 +1,321 @@
 // ==UserScript==
-// @name         Prompt Composer NAI
+// @name         NovelAI Prompt Composer and Tag Manager
 // @namespace    http://tampermonkey.net/
-// @version      2.7
-// @description  Helps compose a complete prompt for NovelAI Image generation, with customizable categories. Allows adding, removing, and reordering tags and categories with persistent selections saved in local storage.
-// @author       Manu
+// @version      0.9.0
+// @description  Enhances NovelAI image generation with a prompt composer. Allows saving, categorizing, and quickly toggling common prompt elements. WARNING: Beta version - manual prompt textarea interaction required after generation.
+// @author       ManuMonkey
 // @license      MIT
 // @match        http*://novelai.net/image
 // @require      http://code.jquery.com/jquery-latest.js
 // ==/UserScript==
 
+/*
+User Guide:
+1. Click the "Compose Prompt" button to open the Prompt Composer.
+2. Manage your categories and tags.
+3. Use checkboxes to toggle tags on/off.
+4. Click "Generate Prompt" to create your prompt.
+5. IMPORTANT: After generating, manually edit the prompt textarea (e.g., add a space and remove it) for the changes to take effect.
+*/
+
+const promptComposerCSS = `
+.prompt-composer-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #f9f9f9;
+    padding: 20px;
+    border: 2px solid #333;
+    border-radius: 10px;
+    z-index: 9999999999;
+    width: 600px;
+    max-height: 80%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.prompt-composer-title {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.button-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.toggle-button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background-color: #666;
+    color: #fff;
+    margin-right: 10px;
+}
+
+.toggle-button:hover {
+    background-color: #555;
+}
+
+.toggle-button:active {
+    background-color: #444;
+}
+
+.category-container {
+    margin-bottom: 15px;
+}
+
+.category-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.checkbox-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 5px;
+    gap: 10px;
+}
+
+.checkbox-label {
+    color: #333;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-right: 10px;
+}
+
+.checkbox-input {
+    margin-right: 5px;
+}
+
+.weight-display {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.weight-control {
+    display: none;
+    align-items: center;
+    margin-left: 5px;
+}
+
+.weight-input {
+    width: 40px;
+    margin: 0 5px;
+}
+
+.weight-button {
+    padding: 0 5px;
+}
+
+.delete-button {
+    margin-left: 5px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    background-color: #ff4d4d;
+    color: #fff;
+    display: none;
+}
+
+.add-tag-container {
+    display: none;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.add-tag-input {
+    flex-grow: 1;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    margin-right: 10px;
+}
+
+.add-tag-button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background-color: #333;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.tag-textarea {
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.generate-button, .close-button {
+    color: #333;
+    background-color: rgb(108, 245, 74);
+    font-size: medium;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 48%; /* Make buttons take up almost half the width each */
+}
+
+.generate-button:hover, .close-button:hover {
+    /* background-color: #87e43b; */
+}
+
+.close-button {
+    background-color: #ccc;
+}
+
+.compose-prompt-button {
+    color: #333;
+    background-color: rgb(246, 245, 244);
+    font-size: small;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.compose-prompt-button:hover {
+    background-color: #e6e6e6;
+}
+
+.add-category-container {
+    display: flex;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.add-category-input {
+    flex-grow: 1;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    margin-right: 10px;
+}
+
+.add-category-button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background-color: #333;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.category-management-buttons {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+}
+
+.delete-category-button {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.delete-category-button:hover {
+    background-color: #ff3333;
+}
+
+.delete-category-button:active {
+    background-color: #e60000;
+}
+
+.move-category-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    margin-right: 5px;
+}
+
+.move-category-button:hover {
+    background-color: #45a049;
+}
+
+.move-category-button {
+    width: auto;
+    height: auto;
+    border-radius: 5px;
+    padding: 5px 8px;
+}
+
+.category-management {
+    margin-bottom: 15px;
+    border-top: 1px solid #ccc;
+    padding-top: 15px;
+}
+
+.bottom-buttons-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+@media screen and (min-width: 1200px) {
+    .prompt-composer-modal {
+        width: 1000px; /* Increased width for larger screens */
+    }
+
+    .categories-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .category-container {
+        width: 48%; /* Slightly less than 50% to account for margins */
+    }
+}
+
+.categories-container {
+    max-height: 60vh; /* Limit the height and enable scrolling if needed */
+    overflow-y: auto;
+}
+
+`;
+
 (function() {
     'use strict';
 
+    // Display a warning message about the beta status
+    console.warn("NovelAI Prompt Composer and Tag Manager (v0.9.0) is running in beta. Known issue: After generating a prompt, you need to manually modify the prompt textarea for it to take effect.");
 
     // Function to inject CSS
     function injectCSS() {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/gh/manuel-schmied/NovelAI-Prompt-Manager-UI@testbranch2/PromptComposerNAI.css';
-        document.head.appendChild(link);
+        const style = document.createElement('style');
+        style.textContent = promptComposerCSS;
+        document.head.appendChild(style);
     }
 
     // Call the injectCSS function immediately
