@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NovelAI Prompt Composer and Tag Manager
 // @namespace    http://tampermonkey.net/
-// @version      0.9.0
+// @version      0.9.1
 // @description  Enhances NovelAI image generation with a prompt composer. Allows saving, categorizing, and quickly toggling common prompt elements. WARNING: Beta version - manual prompt textarea interaction required after generation.
 // @author       ManuMonkey
 // @license      MIT
@@ -305,7 +305,7 @@ const promptComposerCSS = `
 
 `;
 
-(function() {
+(function () {
     'use strict';
 
     // Display a warning message about the beta status
@@ -324,10 +324,10 @@ const promptComposerCSS = `
     let tagArea = null;
     let promptComposerData = JSON.parse(localStorage.getItem('promptComposerData')) || {
         categories: [
-            {name: "Artists", tags: []},
-            {name: "Participants", tags: []},
-            {name: "Backgrounds", tags: []},
-            {name: "Emotions", tags: []}
+            { name: "Artists", tags: [] },
+            { name: "Persons", tags: [] },
+            { name: "Locations", tags: [] },
+            { name: "Expressions", tags: [] }
         ],
         customTags: {}
     };
@@ -339,11 +339,14 @@ const promptComposerCSS = `
     let modalDiv; // Declare modalDiv in the global scope
     let categoriesContainer;
 
-    function renderCategories() {
+    function renderCategories(editMode = false) {
         categoriesContainer.empty();
         promptComposerData.categories.forEach((category, index) => {
             createCategorySection(category, index, categoriesContainer);
         });
+        if (editMode) {
+            $('.move-category-button, .delete-category-button').toggle();
+        }
     }
 
     function openPromptComposer() {
@@ -366,7 +369,7 @@ const promptComposerCSS = `
             const weightToggleButton = $('<button>Toggle Weights</button>').addClass('toggle-button').click(() => {
                 const weightsVisible = !$('.weight-control').first().is(':visible');
                 $('.weight-control').toggle(weightsVisible);
-                $('.weight-display').each(function() {
+                $('.weight-display').each(function () {
                     const label = $(this).closest('label');
                     const weightControl = label.find('.weight-control');
                     const tag = {
@@ -391,10 +394,10 @@ const promptComposerCSS = `
                 .click(() => {
                     const newCategory = addCategoryInput.val().trim();
                     if (newCategory && !promptComposerData.categories.some(cat => cat.name === newCategory)) {
-                        promptComposerData.categories.push({name: newCategory, tags: []});
+                        promptComposerData.categories.push({ name: newCategory, tags: [] });
                         saveToLocalStorage();
                         addCategoryInput.val('');
-                        renderCategories();
+                        renderCategories(true);
                     }
                 });
             addCategoryContainer.append(addCategoryInput, addCategoryButton);
@@ -430,12 +433,12 @@ const promptComposerCSS = `
             modalDiv.append(bottomButtonsContainer);
 
             $('body').append(modalDiv);
-            
+
             // Adjust layout based on screen size
             adjustLayout();
-            
+
             $(window).on('resize', adjustLayout);
-            
+
             console.log("Modal appended to body");
         } catch (error) {
             console.error("Error in openPromptComposer:", error);
@@ -443,7 +446,11 @@ const promptComposerCSS = `
     }
 
     function adjustLayout() {
-        if ($(window).width() >= 1200) {
+        if ($(window).width() >= 1600) {
+            $('.category-container').css('width', '32%');
+            modalDiv.css('width', '1500px');
+        }
+        else if ($(window).width() >= 1200) {
             $('.category-container').css('width', '48%');
             modalDiv.css('width', '1000px');
         } else {
@@ -456,7 +463,7 @@ const promptComposerCSS = `
         const categoryContainer = $('<div></div>').addClass('category-container');
         const categoryHeader = $('<div></div>').addClass('category-header');
         const label = $('<label></label>').text(category.name + ':').addClass('category-label');
-        
+
         const deleteCategoryButton = $('<button>Delete Category</button>')
             .addClass('delete-category-button')
             .hide() // Initially hide the delete button
@@ -464,35 +471,35 @@ const promptComposerCSS = `
                 if (confirm(`Are you sure you want to delete the category "${category.name}" and all its tags?`)) {
                     promptComposerData.categories.splice(index, 1);
                     saveToLocalStorage();
-                    renderCategories();
+                    renderCategories(true);
                 }
             });
-        
+
         const moveCategoryUpButton = $('<button>↑</button>').addClass('move-category-button')
             .hide() // Initially hide the move up button
             .click(() => {
                 if (index > 0) {
-                    [promptComposerData.categories[index - 1], promptComposerData.categories[index]] = 
-                    [promptComposerData.categories[index], promptComposerData.categories[index - 1]];
+                    [promptComposerData.categories[index - 1], promptComposerData.categories[index]] =
+                        [promptComposerData.categories[index], promptComposerData.categories[index - 1]];
                     saveToLocalStorage();
-                    renderCategories();
+                    renderCategories(true);
                 }
             });
-        
+
         const moveCategoryDownButton = $('<button>↓</button>').addClass('move-category-button')
             .hide() // Initially hide the move down button
             .click(() => {
                 if (index < promptComposerData.categories.length - 1) {
-                    [promptComposerData.categories[index], promptComposerData.categories[index + 1]] = 
-                    [promptComposerData.categories[index + 1], promptComposerData.categories[index]];
+                    [promptComposerData.categories[index], promptComposerData.categories[index + 1]] =
+                        [promptComposerData.categories[index + 1], promptComposerData.categories[index]];
                     saveToLocalStorage();
-                    renderCategories();
+                    renderCategories(true);
                 }
             });
-        
+
         const categoryManagementButtons = $('<div></div>').addClass('category-management-buttons');
         categoryManagementButtons.append(moveCategoryUpButton, moveCategoryDownButton, deleteCategoryButton);
-        
+
         categoryHeader.append(label, categoryManagementButtons);
         categoryContainer.append(categoryHeader);
 
@@ -506,20 +513,20 @@ const promptComposerCSS = `
         const addTagInput = $('<input type="text">').addClass('add-tag-input')
             .attr('placeholder', 'Add new ' + category.name.toLowerCase() + '...');
         const addTagButton = $('<button>Add</button>').addClass('add-tag-button');
-        
+
         const addNewTag = () => {
             const newTag = addTagInput.val().trim();
             if (newTag && !category.tags.some(tag => tag.name === newTag)) {
-                category.tags.push({ name: newTag, active: true, weight: 1 });
-                createCheckbox({ name: newTag, active: true, weight: 1 }, category.name, checkboxContainer);
+                category.tags.push({ name: newTag, active: false, weight: 1 });
+                createCheckbox({ name: newTag, active: false, weight: 1 }, category.name, checkboxContainer, true);
                 addTagInput.val('');
                 saveToLocalStorage();
             }
         };
 
         addTagButton.click(addNewTag);
-        addTagInput.keypress(function(e) {
-            if(e.which == 13) {
+        addTagInput.keypress(function (e) {
+            if (e.which == 13) {
                 e.preventDefault();
                 addNewTag();
             }
@@ -530,11 +537,11 @@ const promptComposerCSS = `
 
         const textArea = $('<textarea></textarea>').addClass('tag-textarea')
             .attr('placeholder', 'Enter additional ' + category.name.toLowerCase() + ' here...');
-        
+
         const customTags = promptComposerData.customTags[category.name] || '';
         textArea.val(customTags);
 
-        textArea.on('input', function() {
+        textArea.on('input', function () {
             const customTagsValue = $(this).val().trim();
             promptComposerData.customTags[category.name] = customTagsValue;
             saveToLocalStorage();
@@ -544,11 +551,11 @@ const promptComposerCSS = `
         categoriesContainer.append(categoryContainer);
     }
 
-    function createCheckbox(tag, categoryName, container) {
+    function createCheckbox(tag, categoryName, container, isNew = false) {
         const checkboxLabel = $('<label></label>').addClass('checkbox-label');
         const checkbox = $('<input type="checkbox">').addClass('checkbox-input').val(tag.name);
         checkbox.prop('checked', tag.active);
-        checkbox.change(function() {
+        checkbox.change(function () {
             tag.active = this.checked;
             saveToLocalStorage();
         });
@@ -581,7 +588,7 @@ const promptComposerCSS = `
             saveToLocalStorage();
         }
 
-        weightControl.append(decreaseButton, weightInput, increaseButton);
+        weightControl.append(weightInput, decreaseButton, increaseButton);
         checkboxLabel.append(checkbox, tag.name, weightDisplay, weightControl);
 
         const deleteButton = $('<button>×</button>').addClass('delete-button').click(() => {
@@ -590,6 +597,10 @@ const promptComposerCSS = `
             saveToLocalStorage();
             checkboxLabel.remove();
         });
+        if (isNew) { 
+            console.log("isNew is true");
+            deleteButton.show(); 
+        }
 
         checkboxLabel.append(deleteButton);
         container.append(checkboxLabel);
